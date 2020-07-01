@@ -1,0 +1,135 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2 
+kind: Deployment 
+metadata: 
+  name: frontend 
+spec: 
+  selector: 
+    matchLabels: 
+      app: frontend 
+  replicas: 5 # tells deployment to run 2 pods matching the template 
+  strategy: 
+    rollingUpdate:
+      maxSurge:  1
+      maxUnavailable: 1
+  template:
+    metadata: 
+      labels: 
+        app: frontend 
+    spec: 
+      containers: 
+      - name: frontend 
+        image: acr/frontend-app:#{Build.BuildId}#
+        ports: 
+        - containerPort: 80 
+        resources:
+          requestes:
+            cpu: 250m
+          limits:
+            cpu: 500m
+          env:
+          - api: backend-service
+            
+--- 
+# https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service  
+kind: Service 
+apiVersion: v1 
+metadata: 
+  name: frontend-service 
+spec: 
+  selector: 
+    app: frontend 
+  ports: 
+  - protocol: TCP 
+    port: 80 
+    targetPort: 80 
+  type: LoadBalancer 
+  ---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2 
+kind: Deployment 
+metadata: 
+  name: api 
+spec: 
+  selector: 
+    matchLabels: 
+      app: api 
+  replicas: 5 # tells deployment to run 2 pods matching the template 
+  strategy: 
+    rollingUpdate:
+      maxSurge:  1
+      maxUnavailable: 1
+  template:
+    metadata: 
+      labels: 
+        app: api 
+    spec: 
+      containers: 
+      - name: api 
+        image: acr/api-app:#{Build.BuildId}#
+        ports: 
+        - containerPort: 80 
+        resources:
+          requestes:
+            cpu: 250m
+          limits:
+            cpu: 500m
+          env:
+          - : db-service
+            
+--- 
+# https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service  
+kind: Service 
+apiVersion: v1 
+metadata: 
+  name: backend-service 
+spec: 
+  selector: 
+    app: frontend 
+  ports: 
+  - protocol: TCP 
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP 
+  ---
+  apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2 
+kind: Deployment 
+metadata: 
+  name: database 
+spec: 
+  selector: 
+    matchLabels: 
+      app: database 
+  replicas: 2 # tells deployment to run 2 pods matching the template 
+  strategy: 
+    rollingUpdate:
+      maxSurge:  1
+      maxUnavailable: 1
+  template:
+    metadata: 
+      labels: 
+        app: database 
+    spec: 
+      containers: 
+      - name: database 
+        image: acr/database:#{Build.BuildId}#
+        ports: 
+        - containerPort: 80 
+        resources:
+          requestes:
+            cpu: 250m
+          limits:
+            cpu: 500m
+            
+--- 
+# https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service  
+kind: Service 
+apiVersion: v1 
+metadata: 
+  name: db-service 
+spec: 
+  selector: 
+    app: database 
+  ports: 
+  - protocol: TCP 
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
